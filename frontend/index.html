@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurnIQ — Customer Churn Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --g: #00A651; --gd: #007A3D; --gl: #00C761;
+    --gm: rgba(0,166,81,0.10); --gg: rgba(0,166,81,0.22);
+    --bg: #F7FAF8; --c8: #EEF5F1; --c7: #D8EBE0;
+    --c6: #C0DAC9; --c5: #8FB8A0; --c4: #5E8A72;
+    --c3: #3D6B53; --c2: #2A4F3C; --c1: #1A3328;
+    --red: #E53935; --amb: #F59E0B; --wh: #1A3328;
+    --cb: rgba(255,255,255,0.92); --br: rgba(0,166,81,0.14);
+    --sw: 240px; --sc: 64px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--wh); min-height:100vh; overflow-x:hidden; display:flex; }
+  body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse 80% 50% at 10% 20%,rgba(0,166,81,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 90% 80%,rgba(0,166,81,.04) 0%,transparent 60%); pointer-events:none; z-index:0; }
+  body::after { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,166,81,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,166,81,.04) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+
+  /* SIDEBAR */
+  .sidebar { position:fixed; top:0; left:0; bottom:0; width:var(--sw); background:rgba(255,255,255,.97); border-right:1px solid var(--br); backdrop-filter:blur(16px); z-index:200; display:flex; flex-direction:column; transition:width .3s ease; overflow:hidden; box-shadow: 2px 0 16px rgba(0,166,81,.06); }
+  .sidebar.col { width:var(--sc); }
+  .sb-logo { padding:22px 14px 18px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--br); min-height:70px; }
+  .lm { width:34px; height:34px; min-width:34px; background:var(--g); border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:#fff; box-shadow:0 0 14px var(--gg); }
+  .lt { overflow:hidden; white-space:nowrap; transition:opacity .2s; }
+  .sidebar.col .lt { opacity:0; pointer-events:none; }
+  .lt h1 { font-size:14px; font-weight:700; }
+  .lt p { font-size:9px; color:var(--c4); font-family:'IBM Plex Mono',monospace; }
+  .nav-area { padding:16px 10px 8px; flex:1; overflow-y:auto; overflow-x:hidden; }
+  .nl { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--c4); font-family:'IBM Plex Mono',monospace; padding:0 8px; margin-bottom:5px; white-space:nowrap; transition:opacity .2s; }
+  .sidebar.col .nl { opacity:0; }
+  .ni { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:9px; cursor:pointer; transition:all .2s; margin-bottom:2px; white-space:nowrap; position:relative; }
+  .ni:hover { background:var(--gm); }
+  .ni.active { background:var(--gm); border:1px solid var(--br); }
+  .ni.active .ico { color:var(--gl); }
+  .ni.active .nlb { color:var(--g); font-weight:600; }
+  .ico { font-size:15px; min-width:18px; text-align:center; color:var(--c4); }
+  .nlb { font-size:13px; color:var(--c3); font-weight:500; overflow:hidden; transition:opacity .2s; }
+  .sidebar.col .nlb { opacity:0; }
+  .nbadge { margin-left:auto; padding:2px 7px; border-radius:10px; font-size:9px; font-family:'IBM Plex Mono',monospace; background:rgba(255,179,71,.1); color:var(--amb); border:1px solid rgba(255,179,71,.2); white-space:nowrap; transition:opacity .2s; }
+  .sidebar.col .nbadge { opacity:0; }
+  .tip { position:absolute; left:calc(var(--sc) + 8px); background:var(--c7); color:var(--wh); padding:5px 10px; border-radius:6px; font-size:11px; white-space:nowrap; opacity:0; pointer-events:none; border:1px solid var(--br); transition:opacity .15s; z-index:300; }
+  .sidebar.col .ni:hover .tip { opacity:1; }
+  .ndiv { height:1px; background:var(--br); margin:10px 10px; }
+  .sb-status { padding:10px 10px 0; }
+  .sc-card { padding:10px 12px; background:var(--gm); border:1px solid var(--br); border-radius:10px; transition:opacity .2s; }
+  .sidebar.col .sc-card { opacity:0; pointer-events:none; }
+  .sr { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+  .sd { width:6px; height:6px; background:var(--g); border-radius:50%; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+  .sl { font-size:10px; color:var(--gl); font-family:'IBM Plex Mono',monospace; }
+  .sv { font-size:10px; color:var(--c3); font-family:'IBM Plex Mono',monospace; }
+  .sb-toggle { padding:14px 10px; border-top:1px solid var(--br); }
+  .tbtn { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer; background:transparent; border:1px solid var(--br); color:var(--c3); font-size:12px; font-family:'Sarabun',sans-serif; width:100%; transition:all .2s; white-space:nowrap; overflow:hidden; }
+  .tbtn:hover { background:var(--gm); color:var(--wh); }
+  .tico { min-width:18px; text-align:center; font-size:13px; transition:transform .3s; }
+  .sidebar.col .tico { transform:rotate(180deg); }
+  .tlab { transition:opacity .2s; }
+  .sidebar.col .tlab { opacity:0; }
+
+  /* MAIN */
+  .main { margin-left:var(--sw); flex:1; display:flex; flex-direction:column; position:relative; z-index:1; transition:margin-left .3s ease; min-height:100vh; }
+  .main.col { margin-left:var(--sc); }
+  header { padding:18px 28px; border-bottom:1px solid var(--br); display:flex; align-items:center; justify-content:space-between; background:rgba(247,250,248,.88); backdrop-filter:blur(12px); position:sticky; top:0; z-index:100; }
+  .hl h2 { font-size:16px; font-weight:700; }
+  .hl p { font-size:10px; color:var(--c4); font-family:'IBM Plex Mono',monospace; margin-top:2px; }
+  .dbadge { display:flex; align-items:center; gap:6px; padding:5px 12px; background:var(--gm); border:1px solid var(--br); border-radius:16px; font-size:10px; color:var(--gl); font-family:'IBM Plex Mono',monospace; }
+
+  /* LOADING / ERROR */
+  #loadingState { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:60px; }
+  .spin { width:42px; height:42px; border:3px solid var(--c7); border-top-color:var(--g); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #loadingState p { color:var(--c3); font-size:13px; font-family:'IBM Plex Mono',monospace; }
+  #loadingState small { color:var(--c5); font-size:10px; font-family:'IBM Plex Mono',monospace; }
+  #errorState { flex:1; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:60px; text-align:center; }
+  #errorState .ei { font-size:44px; }
+  #errorState h3 { font-size:18px; font-weight:700; }
+  #errorState p { color:var(--c4); font-size:13px; max-width:400px; line-height:1.6; }
+  .epath { padding:10px 20px; background:var(--c8); border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--red); border:1px solid rgba(239,68,68,.2); }
+  .rbtn { padding:10px 24px; background:var(--g); color:#fff; border:none; border-radius:8px; font-size:14px; font-family:'Sarabun',sans-serif; cursor:pointer; transition:all .2s; }
+  .rbtn:hover { background:var(--gd); }
+
+  /* PAGES */
+  .page { display:none; padding:26px 28px 60px; }
+  .page.active { display:block; }
+
+  /* KPI */
+  .kg { display:grid; grid-template-columns:repeat(5,1fr); gap:13px; margin-bottom:22px; }
+  .kc { background:var(--cb); border:1px solid var(--br); border-radius:13px; padding:18px; backdrop-filter:blur(12px); position:relative; overflow:hidden; transition:transform .2s,box-shadow .2s; }
+  .kc:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.08); }
+  .kc::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--g); }
+  .kc.dan::before { background:var(--red); }
+  .kc.war::before { background:var(--amb); }
+  .kc.neu::before { background:var(--c4); }
+  .kl { font-size:9px; color:var(--c3); letter-spacing:1.5px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace; margin-bottom:9px; }
+  .kv { font-size:32px; font-weight:700; color:var(--wh); letter-spacing:-1px; line-height:1; margin-bottom:4px; font-family:'IBM Plex Mono',monospace; }
+  .kc.dan .kv { color:var(--red); }
+  .kc.war .kv { color:var(--amb); }
+  .ks { font-size:10px; color:var(--c4); }
+
+  /* Section label */
+  .sec-label { font-size:9px; color:var(--g); letter-spacing:2px; text-transform:uppercase; font-family:'IBM Plex Mono',monospace; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .sec-label::after { content:''; flex:1; height:1px; background:var(--br); }
+
+  /* Chart grid */
+  .cr { display:grid; gap:13px; margin-bottom:13px; }
+  .cr.c2 { grid-template-columns:repeat(2,1fr); }
+  .cr.c3 { grid-template-columns:repeat(3,1fr); }
+  .cc { background:var(--cb); border:1px solid var(--br); border-radius:13px; padding:18px; backdrop-filter:blur(12px); transition:transform .2s,box-shadow .2s; }
+  .cc:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.08); }
+  .ch { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+  .ct { font-size:12px; font-weight:600; margin-bottom:3px; }
+  .cs2 { font-size:9px; color:var(--c4); font-family:'IBM Plex Mono',monospace; }
+  .cbadge { padding:3px 8px; border-radius:14px; font-size:9px; font-family:'IBM Plex Mono',monospace; background:var(--gm); color:var(--gl); border:1px solid var(--br); white-space:nowrap; }
+  .ins { margin-top:10px; padding:7px 11px; background:rgba(0,166,81,.06); border-left:3px solid var(--g); border-radius:0 6px 6px 0; font-size:11px; color:var(--c1); line-height:1.5; }
+  .ins strong { color:var(--gd); }
+
+  /* Metric comparison cards */
+  .mg { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:18px; }
+  .mc { background:var(--cb); border:1px solid var(--br); border-radius:11px; padding:14px; text-align:center; position:relative; overflow:hidden; }
+  .mc::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--g); }
+  .mc.best::before { background:var(--gl); box-shadow:0 0 8px var(--gg); }
+  .mc-lbl { font-size:9px; color:var(--c4); font-family:'IBM Plex Mono',monospace; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .mc-rf { font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:var(--wh); }
+  .mc-lr { font-size:11px; color:var(--c5); font-family:'IBM Plex Mono',monospace; margin-top:3px; }
+
+  /* Table */
+  .tbl-wrap { overflow-x:auto; max-height:520px; overflow-y:auto; border-radius:10px; border:1px solid var(--br); }
+  .tbl { width:100%; border-collapse:collapse; font-size:12px; }
+  .tbl th { background:var(--c8); color:var(--c3); font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; padding:10px 12px; text-align:left; border-bottom:2px solid var(--c7); position:sticky; top:0; }
+  .tbl td { padding:9px 12px; border-bottom:1px solid var(--br); color:var(--c2); font-family:'IBM Plex Mono',monospace; font-size:11px; }
+  .tbl tr:hover td { background:var(--gm); }
+  .risk-h { background:rgba(229,57,53,.12); color:var(--red); border:1px solid rgba(229,57,53,.3); padding:2px 8px; border-radius:10px; font-size:9px; font-family:'IBM Plex Mono',monospace; }
+  .risk-m { background:rgba(245,158,11,.12); color:var(--amb); border:1px solid rgba(245,158,11,.3); padding:2px 8px; border-radius:10px; font-size:9px; font-family:'IBM Plex Mono',monospace; }
+  .risk-l { background:rgba(0,166,81,.10); color:var(--g); border:1px solid var(--br); padding:2px 8px; border-radius:10px; font-size:9px; font-family:'IBM Plex Mono',monospace; }
+  .filter-row { display:flex; gap:10px; margin-bottom:14px; align-items:center; flex-wrap:wrap; }
+  .finput { flex:1; min-width:180px; padding:8px 12px; border:1px solid var(--br); border-radius:8px; background:var(--cb); font-family:'Sarabun',sans-serif; font-size:13px; color:var(--wh); outline:none; transition:border-color .2s; }
+  .finput:focus { border-color:var(--g); }
+  .fsel { padding:8px 12px; border:1px solid var(--br); border-radius:8px; background:var(--cb); font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--c3); cursor:pointer; outline:none; }
+  .tbl-count { font-size:10px; color:var(--c4); font-family:'IBM Plex Mono',monospace; margin-left:auto; }
+  .prob-bar-wrap { display:flex; align-items:center; gap:6px; }
+  .prob-bar { height:4px; border-radius:2px; min-width:2px; }
+
+  @media(max-width:1200px){ .kg{grid-template-columns:repeat(3,1fr)} .cr.c3{grid-template-columns:repeat(2,1fr)} .mg{grid-template-columns:repeat(3,1fr)} }
+  @media(max-width:700px){ .sidebar{width:var(--sc)} .main{margin-left:var(--sc)} .kg{grid-template-columns:repeat(2,1fr)} .mg{grid-template-columns:repeat(2,1fr)} .cr.c2,.cr.c3{grid-template-columns:1fr} .page{padding:18px 14px 40px} }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="lm">CQ</div>
+    <div class="lt"><h1>ChurnIQ</h1><p>Churn Intelligence</p></div>
+  </div>
+
+  <div class="nav-area">
+    <div class="nl">Layer 1 — Descriptive</div>
+    <div class="ni active" onclick="nav('overview',this)"><span class="ico">📊</span><span class="nlb">Overview</span><span class="tip">Overview</span></div>
+    <div class="ni" onclick="nav('segments',this)"><span class="ico">👥</span><span class="nlb">Segments</span><span class="tip">Segments</span></div>
+    <div class="ni" onclick="nav('balance',this)"><span class="ico">💰</span><span class="nlb">Balance Analysis</span><span class="tip">Balance Analysis</span></div>
+
+    <div class="ndiv"></div>
+    <div class="nl">Layer 2 — Diagnostic</div>
+    <div class="ni" onclick="nav('correlation',this)"><span class="ico">🔬</span><span class="nlb">Correlation</span><span class="tip">Correlation</span></div>
+    <div class="ni" onclick="nav('feature',this)"><span class="ico">🌡️</span><span class="nlb">Feature Impact</span><span class="tip">Feature Impact</span></div>
+    <div class="ni" onclick="nav('shap',this)"><span class="ico">🧬</span><span class="nlb">SHAP Explainability</span><span class="tip">SHAP</span></div>
+
+    <div class="ndiv"></div>
+    <div class="nl">Layer 3 — Predictive</div>
+    <div class="ni" onclick="nav('model',this)"><span class="ico">🤖</span><span class="nlb">Churn Model</span><span class="tip">Churn Model</span></div>
+    <div class="ni" onclick="nav('risklist',this)"><span class="ico">🎯</span><span class="nlb">High-Risk List</span><span class="tip">High-Risk List</span></div>
+  </div>
+
+  <div class="sb-status">
+    <div class="sc-card">
+      <div class="sr"><div class="sd"></div><span class="sl" id="sbLabel">Loading...</span></div>
+      <div class="sv" id="sbVal">—</div>
+    </div>
+  </div>
+
+  <div class="sb-toggle">
+    <button class="tbtn" onclick="toggleSB()">
+      <span class="tico">◀</span><span class="tlab">Collapse</span>
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main" id="main">
+  <header>
+    <div class="hl">
+      <h2 id="ptitle">Overview</h2>
+      <p id="psub">Customer Churn Analytics · Layer 1 Descriptive</p>
+    </div>
+    <div class="dbadge"><div class="sd"></div><span id="hstatus">กำลังโหลด...</span></div>
+  </header>
+
+  <div id="loadingState">
+    <div class="spin"></div>
+    <p>กำลังโหลดข้อมูล...</p>
+    <small>backend/data/Churn_Modelling.csv</small>
+  </div>
+
+  <div id="errorState">
+    <div class="ei">⚠️</div>
+    <h3>ไม่พบไฟล์ข้อมูล</h3>
+    <p>กรุณาตรวจสอบว่าไฟล์อยู่ในตำแหน่งที่ถูกต้อง และเปิดผ่าน Live Server</p>
+    <div class="epath">backend/data/Churn_Modelling.csv</div>
+    <p style="font-size:11px;color:var(--c5)">💡 ต้องรันผ่าน VSCode Live Server เท่านั้น</p>
+    <button class="rbtn" onclick="load()">🔄 ลองใหม่</button>
+  </div>
+
+  <!-- ═══ LAYER 1: Overview ═══ -->
+  <div class="page" id="page-overview">
+    <div class="kg">
+      <div class="kc"><div class="kl">Total Customers</div><div class="kv" id="k1">—</div><div class="ks">ลูกค้าทั้งหมด</div></div>
+      <div class="kc dan"><div class="kl">Churn Rate</div><div class="kv" id="k2">—</div><div class="ks" id="k2s">—</div></div>
+      <div class="kc war"><div class="kl">Non-Active</div><div class="kv" id="k3">—</div><div class="ks" id="k3s">—</div></div>
+      <div class="kc neu"><div class="kl">Avg Balance (Churned)</div><div class="kv" id="k4">—</div><div class="ks">เฉลี่ยเงินฝากกลุ่ม Churn</div></div>
+      <div class="kc"><div class="kl">Avg Products (Churned)</div><div class="kv" id="k5">—</div><div class="ks" id="k5s">—</div></div>
+    </div>
+    <div class="sec-label">Active Member &amp; Geography</div>
+    <div class="cr c2">
+      <div class="cc"><div class="ch"><div><div class="ct">Active Member vs Churn Rate</div><div class="cs2">IsActiveMember → Exited %</div></div><span class="cbadge">Key Signal</span></div><div style="height:190px"><canvas id="cActive"></canvas></div><div class="ins" id="iActive">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Churn Rate by Geography</div><div class="cs2">ประเทศที่มีความเสี่ยงสูง</div></div><span class="cbadge">Regional</span></div><div style="height:190px"><canvas id="cGeo"></canvas></div><div class="ins" id="iGeo">—</div></div>
+    </div>
+    <div class="sec-label">Age &amp; High-Risk Segment</div>
+    <div class="cr c2">
+      <div class="cc"><div class="ch"><div><div class="ct">Churn Rate by Age Group</div><div class="cs2">กลุ่มอายุที่เสี่ยงสูงสุด</div></div><span class="cbadge">High Risk</span></div><div style="height:190px"><canvas id="cAge"></canvas></div><div class="ins" id="iAge">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Non-Active + Churned by Age</div><div class="cs2">กลุ่มเป้าหมาย Retention</div></div><span class="cbadge">Priority</span></div><div style="height:190px"><canvas id="cRisk"></canvas></div><div class="ins" id="iRisk">—</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 1: Segments ═══ -->
+  <div class="page" id="page-segments">
+    <div class="sec-label">Gender &amp; Products</div>
+    <div class="cr c2">
+      <div class="cc"><div class="ch"><div><div class="ct">Churn Rate by Gender</div><div class="cs2">Female vs Male</div></div></div><div style="height:200px"><canvas id="cGender"></canvas></div><div class="ins" id="iGender">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Churn by Number of Products</div><div class="cs2">จำนวนผลิตภัณฑ์ที่ใช้</div></div><span class="cbadge">Key Factor</span></div><div style="height:200px"><canvas id="cProd"></canvas></div><div class="ins" id="iProd">—</div></div>
+    </div>
+    <div class="sec-label">Tenure &amp; Credit Card</div>
+    <div class="cr c2">
+      <div class="cc"><div class="ch"><div><div class="ct">Churn Rate by Tenure</div><div class="cs2">ระยะเวลาเป็นสมาชิก (ปี)</div></div></div><div style="height:200px"><canvas id="cTenure"></canvas></div><div class="ins" id="iTenure">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Has Credit Card vs Churn</div><div class="cs2">บัตรเครดิตมีผลต่อ Churn ไหม?</div></div></div><div style="height:200px"><canvas id="cCrCard"></canvas></div><div class="ins" id="iCrCard">—</div></div>
+    </div>
+    <div class="sec-label">Credit Score Analysis</div>
+    <div class="cr c2">
+      <div class="cc"><div class="ch"><div><div class="ct">Churn Rate by Credit Score Group</div><div class="cs2">Poor → Excellent (ต่ำ → สูง)</div></div><span class="cbadge">Risk Signal</span></div><div style="height:200px"><canvas id="cCScore"></canvas></div><div class="ins" id="iCScore">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Avg Credit Score: Churned vs Retained</div><div class="cs2">เปรียบเทียบ Credit Score เฉลี่ย</div></div></div><div style="height:200px"><canvas id="cCScoreAvg"></canvas></div><div class="ins" id="iCScoreAvg">—</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 1: Balance ═══ -->
+  <div class="page" id="page-balance">
+    <div class="sec-label">Balance Comparison</div>
+    <div class="cr c2">
+      <div class="cc"><div class="ch"><div><div class="ct">Avg Balance: Churned vs Retained</div><div class="cs2">เปรียบเทียบ Balance เฉลี่ย</div></div></div><div style="height:200px"><canvas id="cBal"></canvas></div><div class="ins" id="iBal">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Avg Balance by Geography</div><div class="cs2">Balance เฉลี่ยแยกตามประเทศ</div></div></div><div style="height:200px"><canvas id="cBalGeo"></canvas></div><div class="ins" id="iBalGeo">—</div></div>
+    </div>
+    <div class="sec-label">Salary, Products &amp; Zero Balance</div>
+    <div class="cr c3">
+      <div class="cc"><div class="ch"><div><div class="ct">Avg Salary: Churned vs Retained</div><div class="cs2">เงินเดือนเฉลี่ยของแต่ละกลุ่ม</div></div></div><div style="height:200px"><canvas id="cSal"></canvas></div><div class="ins" id="iSal">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Avg Products: Churned vs Retained</div><div class="cs2">จำนวน Product เฉลี่ยแต่ละกลุ่ม</div></div><span class="cbadge">Key Insight</span></div><div style="height:200px"><canvas id="cProdAvg"></canvas></div><div class="ins" id="iProdAvg">—</div></div>
+      <div class="cc"><div class="ch"><div><div class="ct">Zero Balance Churn Rate</div><div class="cs2">ลูกค้า Balance = 0 vs &gt; 0</div></div></div><div style="height:200px"><canvas id="cZero"></canvas></div><div class="ins" id="iZero">—</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 2: Correlation ═══ -->
+  <div class="page" id="page-correlation">
+    <div class="sec-label">Point-Biserial Correlation with Churn</div>
+    <div class="cr c2">
+      <div class="cc" style="grid-column:1/-1">
+        <div class="ch">
+          <div><div class="ct">Feature Correlation with Exited (Churn)</div><div class="cs2">สีแดง = ยิ่งมากยิ่งเสี่ยง Churn · สีเขียว = ยิ่งมากยิ่งปลอดภัย</div></div>
+          <span class="cbadge">Statistical</span>
+        </div>
+        <div style="height:340px"><canvas id="cCorr"></canvas></div>
+        <div class="ins" id="iCorr">—</div>
+      </div>
+    </div>
+    <div class="sec-label">Correlation Interpretation</div>
+    <div class="cr c2">
+      <div class="cc">
+        <div class="ch"><div><div class="ct">Positive Correlation (เพิ่ม Churn Risk)</div><div class="cs2">ค่าสูง → โอกาส Churn สูงขึ้น</div></div></div>
+        <div id="corrPos" style="margin-top:8px"></div>
+      </div>
+      <div class="cc">
+        <div class="ch"><div><div class="ct">Negative Correlation (ลด Churn Risk)</div><div class="cs2">ค่าสูง → โอกาส Churn ต่ำลง</div></div></div>
+        <div id="corrNeg" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 2: Feature Impact ═══ -->
+  <div class="page" id="page-feature">
+    <div class="sec-label">Random Forest Feature Importance</div>
+    <div class="cr c2">
+      <div class="cc" style="grid-column:1/-1">
+        <div class="ch">
+          <div><div class="ct">Feature Importance — Random Forest</div><div class="cs2">ค่ายิ่งสูง = Feature นั้นสำคัญต่อการทำนาย Churn มากขึ้น</div></div>
+          <span class="cbadge">ML-Based</span>
+        </div>
+        <div style="height:320px"><canvas id="cFI"></canvas></div>
+        <div class="ins" id="iFI">—</div>
+      </div>
+    </div>
+    <div class="sec-label">Top Feature Summary</div>
+    <div id="fiCards" class="cr c3"></div>
+  </div>
+
+  <!-- ═══ LAYER 2: SHAP ═══ -->
+  <div class="page" id="page-shap">
+    <div class="sec-label">SHAP — Global Explainability</div>
+    <div class="cr c2">
+      <div class="cc" style="grid-column:1/-1">
+        <div class="ch">
+          <div><div class="ct">Mean |SHAP value| — Global Feature Impact</div><div class="cs2">ค่ายิ่งสูง = Feature นั้นผลักดัน probability ของโมเดลมากขึ้น (เฉลี่ยทุกลูกค้า)</div></div>
+          <span class="cbadge">Tuned RF</span>
+        </div>
+        <div style="height:340px"><canvas id="cSHAP"></canvas></div>
+        <div class="ins" id="iSHAP">—</div>
+      </div>
+    </div>
+    <div class="sec-label">SHAP vs RF Feature Importance</div>
+    <div class="cr c2">
+      <div class="cc">
+        <div class="ch"><div><div class="ct">SHAP Top 5</div><div class="cs2">วัดผลกระทบต่อ probability โดยตรง</div></div></div>
+        <div id="shapTop" style="margin-top:8px"></div>
+      </div>
+      <div class="cc">
+        <div class="ch"><div><div class="ct">SHAP vs Feature Importance — ต่างกันยังไง?</div><div class="cs2">ทำไมต้องใช้ทั้งสอง</div></div></div>
+        <p style="font-size:12px;color:var(--c3);line-height:1.7;margin-top:8px">
+          <strong style="color:var(--gd)">Feature Importance (RF)</strong> วัดว่า feature ลด impurity ใน split ได้แค่ไหน — บอก "ใช้บ่อย" ไม่บอกทิศทาง<br><br>
+          <strong style="color:var(--gd)">SHAP</strong> วัดผลต่อ probability โดยตรง — บอกได้ว่าค่าสูงผลัก Churn ขึ้นหรือลง รวมถึง <em>per-customer</em><br><br>
+          ใช้ <strong>SHAP</strong> เมื่อต้องอธิบายเป็น case-by-case (Compliance, Customer Service)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 3: Churn Model ═══ -->
+  <div class="page" id="page-model">
+    <div class="sec-label">Model Performance — Random Forest (Best)</div>
+    <div class="mg" id="modelKPI"></div>
+    <div class="sec-label">LR vs Random Forest Comparison</div>
+    <div class="cr c2">
+      <div class="cc" style="grid-column:1/-1">
+        <div class="ch">
+          <div><div class="ct">Metric Comparison: Logistic Regression vs Random Forest</div><div class="cs2">class_weight='balanced' — ปรับสมดุล Class Imbalance (Churn ~20%)</div></div>
+          <span class="cbadge">Benchmark</span>
+        </div>
+        <div style="height:260px"><canvas id="cModel"></canvas></div>
+        <div class="ins" id="iModel">—</div>
+      </div>
+    </div>
+    <div class="sec-label">Why These Metrics?</div>
+    <div class="cr c3">
+      <div class="cc"><div class="ch"><div><div class="ct">Recall สำคัญที่สุด</div><div class="cs2">สำหรับ Churn Prediction</div></div></div><p style="font-size:12px;color:var(--c3);line-height:1.6;margin-top:6px">การพลาด Churn จริง (False Negative) แพงกว่าการส่ง Retention ผิดกลุ่ม (False Positive) — Recall สูง = จับ Churner ได้ครบ</p></div>
+      <div class="cc"><div class="ch"><div><div class="ct">ROC-AUC</div><div class="cs2">Ranking Quality</div></div></div><p style="font-size:12px;color:var(--c3);line-height:1.6;margin-top:6px">วัดว่าโมเดลจัดอันดับ Churner สูงกว่า Non-Churner ได้ดีแค่ไหน — 0.5 = สุ่ม, 1.0 = สมบูรณ์แบบ</p></div>
+      <div class="cc"><div class="ch"><div><div class="ct">F1 Score</div><div class="cs2">Balance of P &amp; R</div></div></div><p style="font-size:12px;color:var(--c3);line-height:1.6;margin-top:6px">Harmonic Mean ของ Precision และ Recall — ใช้เมื่อต้องการ Balance ระหว่างทั้งสอง ไม่เน้นอย่างใดอย่างหนึ่ง</p></div>
+    </div>
+  </div>
+
+  <!-- ═══ LAYER 3: High-Risk List ═══ -->
+  <div class="page" id="page-risklist">
+    <div class="kg" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kc dan"><div class="kl">High-Risk Customers</div><div class="kv" id="rk1">—</div><div class="ks">Churn Probability &gt; 60%</div></div>
+      <div class="kc war"><div class="kl">Medium-Risk</div><div class="kv" id="rk2">—</div><div class="ks">Churn Probability 30–60%</div></div>
+      <div class="kc"><div class="kl">Low-Risk</div><div class="kv" id="rk3">—</div><div class="ks">Churn Probability &lt; 30%</div></div>
+    </div>
+    <div class="sec-label">Customer Risk List</div>
+    <div class="filter-row">
+      <input class="finput" id="rkSearch" placeholder="ค้นหาชื่อ, ID, ประเทศ..." oninput="filterRisk()">
+      <select class="fsel" id="rkTier" onchange="filterRisk()">
+        <option value="">All Tiers</option>
+        <option value="High">High Risk</option>
+        <option value="Medium">Medium Risk</option>
+        <option value="Low">Low Risk</option>
+      </select>
+      <select class="fsel" id="rkActual" onchange="filterRisk()">
+        <option value="">All Outcomes</option>
+        <option value="1">Actually Churned</option>
+        <option value="0">Retained</option>
+      </select>
+      <span class="tbl-count" id="rkCount">0 customers</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Customer ID</th>
+            <th>Name</th>
+            <th>Country</th>
+            <th>Gender</th>
+            <th>Age</th>
+            <th>Balance</th>
+            <th>Products</th>
+            <th>Active</th>
+            <th>Actual</th>
+            <th>Churn Prob.</th>
+            <th>Risk Tier</th>
+            <th>Top Reasons (SHAP)</th>
+          </tr>
+        </thead>
+        <tbody id="rkBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+let charts={}, sbCol=false;
+let riskRows=[], riskFiltered=[];
+const CSV='../backend/data/Churn_Modelling.csv';
+const RISK_CSV='../backend/data/high_risk_customers.csv';
+const FI_JSON='../backend/data/feature_importance.json';
+const CORR_JSON='../backend/data/correlation.json';
+const SCORES_JSON='../backend/data/model_scores.json';
+const SHAP_JSON='../backend/data/shap_global.json';
+const C={g:'rgba(0,166,81,.85)',gl:'rgba(0,199,97,.85)',gm:'rgba(0,166,81,.22)',r:'rgba(229,57,53,.85)',a:'rgba(245,158,11,.85)',b:'rgba(52,152,219,.85)',gr:'rgba(0,166,81,.07)',tx:'#5E8A72'};
+
+const pages={
+  overview:{t:'Overview',s:'Customer Churn Analytics · Layer 1 Descriptive'},
+  segments:{t:'Segments',s:'Gender, Products, Tenure · Layer 1 Descriptive'},
+  balance:{t:'Balance Analysis',s:'Balance & Salary · Layer 1 Descriptive'},
+  correlation:{t:'Correlation Analysis',s:'Point-Biserial Correlation · Layer 2 Diagnostic'},
+  feature:{t:'Feature Impact',s:'Random Forest Feature Importance · Layer 2 Diagnostic'},
+  shap:{t:'SHAP Explainability',s:'Per-Feature & Per-Customer Explanations · Layer 2 Diagnostic'},
+  model:{t:'Churn Prediction Model',s:'LR vs Random Forest · Layer 3 Predictive'},
+  risklist:{t:'High-Risk Customer List',s:'Model-Scored Risk Tiers · Layer 3 Predictive'},
+};
+
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
+  if(el) el.classList.add('active');
+  const info=pages[id]||{};
+  document.getElementById('ptitle').textContent=info.t||id;
+  document.getElementById('psub').textContent=info.s||'';
+}
+
+function toggleSB(){
+  sbCol=!sbCol;
+  document.getElementById('sidebar').classList.toggle('col',sbCol);
+  document.getElementById('main').classList.toggle('col',sbCol);
+}
+
+function mkOpts(pct=true,cb=null){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'#ffffff',borderColor:'rgba(0,166,81,.25)',borderWidth:1,titleColor:'#1A3328',bodyColor:'#3D6B53',padding:10,
+        callbacks:{label:cb||(ctx=>` ${pct?ctx.parsed.y.toFixed(1)+'%':ctx.parsed.y.toLocaleString()}`)}
+      }
+    },
+    scales:{
+      x:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10}},border:{color:'transparent'}},
+      y:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10},callback:pct?v=>v+'%':v=>(v/1000).toFixed(0)+'K'},border:{color:'transparent'}}
+    }
+  };
+}
+
+function mkHorizOpts(cb=null){
+  return {
+    indexAxis:'y',
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'#ffffff',borderColor:'rgba(0,166,81,.25)',borderWidth:1,titleColor:'#1A3328',bodyColor:'#3D6B53',padding:10,
+        callbacks:{label:cb||(ctx=>` ${ctx.parsed.x.toFixed(4)}`)}
+      }
+    },
+    scales:{
+      x:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:9}},border:{color:'transparent'}},
+      y:{grid:{display:false},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10}},border:{color:'transparent'}}
+    }
+  };
+}
+
+function bar(id,labels,data,colors,opts){
+  if(charts[id]) charts[id].destroy();
+  charts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:7,borderSkipped:false}]},options:opts||mkOpts()});
+}
+
+function grp(data,field){
+  const g={};
+  data.forEach(r=>{const k=r[field]; if(k==null)return; if(!g[k]){g[k]={t:0,c:0};} g[k].t++; if(r.Exited===1)g[k].c++;});
+  return Object.entries(g).map(([k,v])=>({label:String(k),rate:v.c/v.t*100,t:v.t,c:v.c})).sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}));
+}
+
+/* ═══════════════════════════════════════════════
+   LOAD — fetch all data sources in parallel
+═══════════════════════════════════════════════ */
+function load(){
+  document.getElementById('loadingState').style.display='flex';
+  document.getElementById('errorState').style.display='none';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+
+  const fetchJSON=url=>fetch(url).then(r=>{if(!r.ok)throw new Error(url+' not found'); return r.json();}).catch(()=>null);
+  const fetchCSVText=url=>fetch(url).then(r=>{if(!r.ok)throw new Error(); return r.text();}).catch(()=>null);
+
+  Promise.all([
+    fetchCSVText(CSV),
+    fetchCSVText(RISK_CSV),
+    fetchJSON(FI_JSON),
+    fetchJSON(CORR_JSON),
+    fetchJSON(SCORES_JSON),
+    fetchJSON(SHAP_JSON),
+  ]).then(([mainTxt,riskTxt,fi,corr,scores,shapG])=>{
+    if(!mainTxt){ showError(); return; }
+    Papa.parse(mainTxt,{header:true,dynamicTyping:true,skipEmptyLines:true,complete:res=>{
+      document.getElementById('loadingState').style.display='none';
+      render(res.data);
+      if(riskTxt) { Papa.parse(riskTxt,{header:true,dynamicTyping:true,skipEmptyLines:true,complete:rr=>renderRisk(rr.data)}); }
+      if(fi)     renderFI(fi);
+      if(corr)   renderCorr(corr);
+      if(scores) renderModel(scores);
+      if(shapG)  renderShap(shapG);
+      nav('overview',document.querySelector('.ni'));
+      document.getElementById('sbLabel').textContent='Data Loaded';
+      document.getElementById('sbVal').textContent=res.data.length.toLocaleString()+' customers';
+      document.getElementById('hstatus').textContent=res.data.length.toLocaleString()+' records · Live';
+    }});
+  }).catch(()=>showError());
+}
+
+function showError(){
+  document.getElementById('loadingState').style.display='none';
+  document.getElementById('errorState').style.display='flex';
+  document.getElementById('sbLabel').textContent='Error';
+  document.getElementById('hstatus').textContent='ไม่พบไฟล์';
+}
+
+/* ═══════════════════════════════════════════════
+   LAYER 1 — Descriptive
+═══════════════════════════════════════════════ */
+function render(data){
+  const ch=data.filter(r=>r.Exited===1), re=data.filter(r=>r.Exited===0), n=data.length;
+  const na=data.filter(r=>r.IsActiveMember===0);
+  const avgBC=ch.reduce((s,r)=>s+(r.Balance||0),0)/ch.length;
+  const avgBR=re.reduce((s,r)=>s+(r.Balance||0),0)/re.length;
+  const avgSC=ch.reduce((s,r)=>s+(r.EstimatedSalary||0),0)/ch.length;
+  const avgSR=re.reduce((s,r)=>s+(r.EstimatedSalary||0),0)/re.length;
+  const avgProdC=ch.reduce((s,r)=>s+(r.NumOfProducts||0),0)/ch.length;
+  const avgProdR=re.reduce((s,r)=>s+(r.NumOfProducts||0),0)/re.length;
+  const avgCsC=ch.reduce((s,r)=>s+(r.CreditScore||0),0)/ch.length;
+  const avgCsR=re.reduce((s,r)=>s+(r.CreditScore||0),0)/re.length;
+
+  // KPIs
+  document.getElementById('k1').textContent=n.toLocaleString();
+  document.getElementById('k2').textContent=(ch.length/n*100).toFixed(1)+'%';
+  document.getElementById('k2s').textContent=ch.length.toLocaleString()+' คนที่ Churn';
+  document.getElementById('k3').textContent=(na.length/n*100).toFixed(1)+'%';
+  document.getElementById('k3s').textContent=na.length.toLocaleString()+' คน — กลุ่มเสี่ยงสูง';
+  document.getElementById('k4').textContent=(avgBC/1000).toFixed(0)+'K';
+  document.getElementById('k5').textContent=avgProdC.toFixed(2);
+  document.getElementById('k5s').textContent='Retained เฉลี่ย '+avgProdR.toFixed(2)+' ชิ้น';
+
+  const bins=[{l:'<30',mn:0,mx:30},{l:'30-40',mn:30,mx:40},{l:'40-50',mn:40,mx:50},{l:'50-60',mn:50,mx:60},{l:'60+',mn:60,mx:200}];
+
+  const act=grp(data,'IsActiveMember');
+  bar('cActive',act.map(d=>d.label==='0'?'Non-Active':'Active'),act.map(d=>d.rate),[C.r,C.g]);
+  document.getElementById('iActive').innerHTML=`Non-Active Churn <strong>${act[0].rate.toFixed(1)}%</strong> สูงกว่า Active <strong>${(act[0].rate/act[1].rate).toFixed(1)}x</strong>`;
+
+  const geo=grp(data,'Geography'), mx=geo.reduce((m,d)=>d.rate>m.rate?d:m,geo[0]);
+  bar('cGeo',geo.map(d=>d.label),geo.map(d=>d.rate),geo.map(d=>d.label===mx.label?C.r:C.g));
+  document.getElementById('iGeo').innerHTML=`<strong>${mx.label}</strong> Churn Rate สูงสุด <strong>${mx.rate.toFixed(1)}%</strong>`;
+
+  const ag=bins.map(b=>{const g2=data.filter(r=>r.Age>=b.mn&&r.Age<b.mx),c2=g2.filter(r=>r.Exited===1).length;return{label:b.l,rate:g2.length?c2/g2.length*100:0};});
+  const ma=ag.reduce((m,d)=>d.rate>m.rate?d:m,ag[0]);
+  bar('cAge',ag.map(d=>d.label),ag.map(d=>d.rate),ag.map(d=>d.label===ma.label?C.r:C.g));
+  document.getElementById('iAge').innerHTML=`กลุ่มอายุ <strong>${ma.label} ปี</strong> Churn สูงสุด <strong>${ma.rate.toFixed(1)}%</strong>`;
+
+  const rk=bins.map(b=>({label:b.l,count:data.filter(r=>r.IsActiveMember===0&&r.Exited===1&&r.Age>=b.mn&&r.Age<b.mx).length}));
+  const mr=rk.reduce((m,d)=>d.count>m.count?d:m,rk[0]);
+  const cntOpt=mkOpts(false,ctx=>` ${ctx.parsed.y} คน`);
+  cntOpt.scales.y.ticks.callback=v=>v+' คน';
+  bar('cRisk',rk.map(d=>d.label),rk.map(d=>d.count),rk.map(d=>d.label===mr.label?C.r:C.gm),cntOpt);
+  document.getElementById('iRisk').innerHTML=`Priority: อายุ <strong>${mr.label} ปี</strong> จำนวน <strong>${mr.count} คน</strong> — เป้าหมาย Retention Call`;
+
+  const gen=grp(data,'Gender'), mg=gen.reduce((m,d)=>d.rate>m.rate?d:m,gen[0]);
+  bar('cGender',gen.map(d=>d.label),gen.map(d=>d.rate),[C.a,C.gl]);
+  document.getElementById('iGender').innerHTML=`<strong>${mg.label}</strong> Churn <strong>${mg.rate.toFixed(1)}%</strong> — ควรออกแบบ Retention เฉพาะกลุ่ม`;
+
+  const pr=grp(data,'NumOfProducts'), mp=pr.reduce((m,d)=>d.rate<m.rate?d:m,pr[0]);
+  bar('cProd',pr.map(d=>d.label+' Product'+(d.label>'1'?'s':'')),pr.map(d=>d.rate),pr.map(d=>d.rate>50?C.r:d.rate<15?C.g:C.a));
+  document.getElementById('iProd').innerHTML=`<strong>${mp.label} Products</strong> Churn ต่ำสุด <strong>${mp.rate.toFixed(1)}%</strong> — Cross-sell คือกลยุทธ์สำคัญ`;
+
+  const te=grp(data,'Tenure');
+  bar('cTenure',te.map(d=>d.label+' ปี'),te.map(d=>d.rate),te.map(()=>C.g));
+  document.getElementById('iTenure').innerHTML=`Tenure ไม่ส่งผลต่อ Churn อย่างชัดเจน — ต้องวิเคราะห์ร่วม Feature อื่น`;
+
+  const cr=grp(data,'HasCrCard');
+  bar('cCrCard',cr.map(d=>d.label==='0'?'ไม่มีบัตร':'มีบัตร'),cr.map(d=>d.rate),[C.a,C.g]);
+  document.getElementById('iCrCard').innerHTML=`การมีบัตรเครดิตไม่ส่งผลต่อ Churn อย่างมีนัยสำคัญ`;
+
+  const csBins=[{l:'Poor (<500)',mn:0,mx:500},{l:'Fair (500-600)',mn:500,mx:600},{l:'Good (600-700)',mn:600,mx:700},{l:'VGood (700-800)',mn:700,mx:800},{l:'Excellent (800+)',mn:800,mx:1000}];
+  const csData=csBins.map(b=>{
+    const g2=data.filter(r=>r.CreditScore>=b.mn&&r.CreditScore<b.mx);
+    const c2=g2.filter(r=>r.Exited===1).length;
+    return{label:b.l,rate:g2.length?c2/g2.length*100:0};
+  });
+  const mcs=csData.reduce((m,d)=>d.rate>m.rate?d:m,csData[0]);
+  bar('cCScore',csData.map(d=>d.label),csData.map(d=>d.rate),csData.map(d=>d.label===mcs.label?C.r:C.g));
+  document.getElementById('iCScore').innerHTML=`กลุ่ม <strong>${mcs.label}</strong> Churn Rate สูงสุด <strong>${mcs.rate.toFixed(1)}%</strong>`;
+
+  const csAvgOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toFixed(0)} คะแนน`);
+  csAvgOpt.scales.y.ticks.callback=v=>v+' pts';
+  bar('cCScoreAvg',['Retained','Churned'],[avgCsR,avgCsC],[C.g,C.r],csAvgOpt);
+  document.getElementById('iCScoreAvg').innerHTML=`Churned มี Credit Score เฉลี่ย <strong>${avgCsC.toFixed(0)}</strong> vs Retained <strong>${avgCsR.toFixed(0)}</strong> — ต่างกัน <strong>${Math.abs(avgCsC-avgCsR).toFixed(0)} คะแนน</strong>`;
+
+  const bOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toLocaleString()} THB`);
+  bOpt.scales.y.ticks.callback=v=>(v/1000).toFixed(0)+'K';
+  bar('cBal',['Retained','Churned'],[avgBR,avgBC],[C.g,C.r],bOpt);
+  document.getElementById('iBal').innerHTML=`Churned มี Balance เฉลี่ย <strong>${(avgBC/1000).toFixed(1)}K</strong> สูงกว่า Retained <strong>${(avgBR/1000).toFixed(1)}K</strong>`;
+
+  const geoN=[...new Set(data.map(r=>r.Geography))].sort();
+  const ch2=data.filter(r=>r.Exited===1);
+  const geoBC=geoN.map(g=>{const gr2=ch2.filter(r=>r.Geography===g);return gr2.reduce((s,r)=>s+(r.Balance||0),0)/(gr2.length||1);});
+  bar('cBalGeo',geoN,geoBC,geoN.map(()=>C.g),bOpt);
+  document.getElementById('iBalGeo').innerHTML=`Balance เฉลี่ยของลูกค้า Churn แยกตามประเทศ`;
+
+  const prodAvgOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toFixed(2)} ชิ้น`);
+  prodAvgOpt.scales.y.ticks.callback=v=>v.toFixed(1)+' ชิ้น';
+  bar('cProdAvg',['Retained','Churned'],[avgProdR,avgProdC],[C.g,C.r],prodAvgOpt);
+  document.getElementById('iProdAvg').innerHTML=`Churned มี Products เฉลี่ย <strong>${avgProdC.toFixed(2)} ชิ้น</strong> vs Retained <strong>${avgProdR.toFixed(2)} ชิ้น</strong>`;
+
+  const sOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toLocaleString()} THB`);
+  sOpt.scales.y.ticks.callback=v=>(v/1000).toFixed(0)+'K';
+  bar('cSal',['Retained','Churned'],[avgSR,avgSC],[C.g,C.a],sOpt);
+  document.getElementById('iSal').innerHTML=`เงินเดือนเฉลี่ยไม่ต่างกันมาก — Salary ไม่ใช่ตัวแปรหลักของ Churn`;
+
+  const z0=data.filter(r=>(r.Balance||0)===0), nz=data.filter(r=>(r.Balance||0)>0);
+  const z0c=z0.filter(r=>r.Exited===1).length, nzc=nz.filter(r=>r.Exited===1).length;
+  bar('cZero',['Balance = 0','Balance > 0'],[z0c/z0.length*100,nzc/nz.length*100],[C.a,C.g]);
+  document.getElementById('iZero').innerHTML=`ลูกค้า Balance=0 มี <strong>${z0.length.toLocaleString()}</strong> คน Churn Rate <strong>${(z0c/z0.length*100).toFixed(1)}%</strong>`;
+}
+
+/* ═══════════════════════════════════════════════
+   LAYER 2 — Correlation
+═══════════════════════════════════════════════ */
+function renderCorr(data){
+  if(!data||!data.length) return;
+  const sorted=[...data].sort((a,b)=>b.AbsCorr-a.AbsCorr);
+  const labels=sorted.map(d=>d.Feature);
+  const vals=sorted.map(d=>d.Correlation);
+  const colors=vals.map(v=>v>0?C.r:C.b);
+
+  if(charts['cCorr']) charts['cCorr'].destroy();
+  charts['cCorr']=new Chart(document.getElementById('cCorr'),{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},
+    options:{
+      ...mkHorizOpts(ctx=>` ${ctx.parsed.x.toFixed(3)}`),
+      scales:{
+        x:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10},callback:v=>v.toFixed(2)},border:{color:'transparent'}},
+        y:{grid:{display:false},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10}},border:{color:'transparent'}}
+      }
+    }
+  });
+
+  const top=sorted[0], topPos=sorted.filter(d=>d.Correlation>0).slice(0,4), topNeg=sorted.filter(d=>d.Correlation<0).slice(0,4);
+  document.getElementById('iCorr').innerHTML=`Feature ที่มีผลสูงสุด: <strong>${top.Feature}</strong> (r = ${top.Correlation.toFixed(3)}) — ${top.Correlation>0?'ยิ่งมากยิ่งเสี่ยง Churn':'ยิ่งมากยิ่งปลอดภัย'}`;
+
+  const fmtList=(arr,pos)=>arr.map(d=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--br)"><span style="font-size:12px">${d.Feature}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${pos?'var(--red)':'var(--g)'}">${d.Correlation>0?'+':''}${d.Correlation.toFixed(3)}</span></div>`).join('');
+  document.getElementById('corrPos').innerHTML=fmtList(topPos,true);
+  document.getElementById('corrNeg').innerHTML=fmtList(topNeg,false);
+}
+
+/* ═══════════════════════════════════════════════
+   LAYER 2 — Feature Importance
+═══════════════════════════════════════════════ */
+function renderFI(data){
+  if(!data||!data.length) return;
+  const sorted=[...data].sort((a,b)=>b.Importance-a.Importance);
+  const labels=sorted.map(d=>d.Feature);
+  const vals=sorted.map(d=>d.Importance);
+  const maxV=vals[0];
+  const colors=vals.map(v=>`rgba(0,${Math.round(100+106*(v/maxV))},${Math.round(81*(v/maxV))},.8)`);
+
+  if(charts['cFI']) charts['cFI'].destroy();
+  charts['cFI']=new Chart(document.getElementById('cFI'),{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},
+    options:{...mkHorizOpts(ctx=>` ${(ctx.parsed.x*100).toFixed(2)}%`),
+      scales:{
+        x:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10},callback:v=>(v*100).toFixed(1)+'%'},border:{color:'transparent'}},
+        y:{grid:{display:false},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10}},border:{color:'transparent'}}
+      }
+    }
+  });
+
+  document.getElementById('iFI').innerHTML=`Top feature: <strong>${sorted[0].Feature}</strong> (${(sorted[0].Importance*100).toFixed(2)}%) — <strong>${sorted[1].Feature}</strong> (${(sorted[1].Importance*100).toFixed(2)}%) — <strong>${sorted[2].Feature}</strong> (${(sorted[2].Importance*100).toFixed(2)}%)`;
+
+  const fiCards=document.getElementById('fiCards');
+  fiCards.innerHTML=sorted.slice(0,3).map((d,i)=>`
+    <div class="cc">
+      <div class="ch"><div><div class="ct">${['🥇','🥈','🥉'][i]} ${d.Feature}</div><div class="cs2">Rank #${i+1} Most Important</div></div></div>
+      <div style="font-size:28px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--g);margin:10px 0">${(d.Importance*100).toFixed(2)}%</div>
+      <div style="background:var(--c8);border-radius:4px;height:6px"><div style="background:var(--g);height:100%;border-radius:4px;width:${(d.Importance/sorted[0].Importance*100).toFixed(1)}%"></div></div>
+      <div style="font-size:11px;color:var(--c4);margin-top:6px">Feature สำคัญอันดับ ${i+1} ในการทำนาย Churn</div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   LAYER 2 — SHAP Global
+═══════════════════════════════════════════════ */
+function renderShap(data){
+  if(!data||!data.length) return;
+  const sorted=[...data].sort((a,b)=>b.MeanAbsSHAP-a.MeanAbsSHAP);
+  const labels=sorted.map(d=>d.Feature);
+  const vals=sorted.map(d=>d.MeanAbsSHAP);
+  const maxV=vals[0]||1;
+  const colors=vals.map(v=>`rgba(0,${Math.round(120+85*(v/maxV))},${Math.round(97*(v/maxV))},.85)`);
+
+  if(charts['cSHAP']) charts['cSHAP'].destroy();
+  charts['cSHAP']=new Chart(document.getElementById('cSHAP'),{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},
+    options:{...mkHorizOpts(ctx=>` ${ctx.parsed.x.toFixed(4)}`),
+      scales:{
+        x:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10},callback:v=>v.toFixed(3)},border:{color:'transparent'}},
+        y:{grid:{display:false},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10}},border:{color:'transparent'}}
+      }
+    }
+  });
+
+  document.getElementById('iSHAP').innerHTML=`Top SHAP feature: <strong>${sorted[0].Feature}</strong> (mean |SHAP| = ${sorted[0].MeanAbsSHAP.toFixed(4)}) — ผลกระทบเฉลี่ยต่อ probability ของโมเดล`;
+
+  document.getElementById('shapTop').innerHTML=sorted.slice(0,5).map((d,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--br)">
+      <span style="font-size:12px"><strong style="color:var(--g);font-family:'IBM Plex Mono',monospace;margin-right:8px">#${i+1}</strong>${d.Feature}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gd)">${d.MeanAbsSHAP.toFixed(4)}</span>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   LAYER 3 — Model Performance
+═══════════════════════════════════════════════ */
+function renderModel(data){
+  if(!data||!data.length) return;
+  const lr=data.find(d=>d.Model&&d.Model.includes('Logistic'))||data[0];
+  const rf=data.find(d=>d.Model&&d.Model.includes('Forest'))||data[1]||data[0];
+  const metrics=['Accuracy','Precision','Recall','F1','ROC_AUC'];
+  const labels=['Accuracy','Precision','Recall','F1','ROC-AUC'];
+
+  const kpi=document.getElementById('modelKPI');
+  kpi.innerHTML=metrics.map((m,i)=>`
+    <div class="mc ${m==='ROC_AUC'||m==='Recall'?'best':''}">
+      <div class="mc-lbl">${labels[i]}</div>
+      <div class="mc-rf">${rf&&rf[m]!=null?(rf[m]*100).toFixed(1)+'%':'—'}</div>
+      <div class="mc-lr">LR: ${lr&&lr[m]!=null?(lr[m]*100).toFixed(1)+'%':'—'}</div>
+    </div>`).join('');
+
+  if(charts['cModel']) charts['cModel'].destroy();
+  charts['cModel']=new Chart(document.getElementById('cModel'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Logistic Regression',data:metrics.map(m=>lr&&lr[m]!=null?+(lr[m]*100).toFixed(2):0),backgroundColor:C.b,borderRadius:5},
+        {label:'Random Forest',data:metrics.map(m=>rf&&rf[m]!=null?+(rf[m]*100).toFixed(2):0),backgroundColor:C.g,borderRadius:5}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:'#3D6B53',font:{family:'IBM Plex Mono',size:11}}},
+        tooltip:{backgroundColor:'#fff',borderColor:'rgba(0,166,81,.25)',borderWidth:1,titleColor:'#1A3328',bodyColor:'#3D6B53',padding:10,
+          callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}
+        }
+      },
+      scales:{
+        x:{grid:{color:C.gr},ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:11}},border:{color:'transparent'}},
+        y:{grid:{color:C.gr},min:0,max:100,ticks:{color:C.tx,font:{family:'IBM Plex Mono',size:10},callback:v=>v+'%'},border:{color:'transparent'}}
+      }
+    }
+  });
+
+  const rfAUC=rf&&rf['ROC_AUC']?rf['ROC_AUC']:0;
+  const rfF1=rf&&rf['F1']?rf['F1']:0;
+  document.getElementById('iModel').innerHTML=`Random Forest ชนะใน ROC-AUC <strong>${(rfAUC*100).toFixed(1)}%</strong> และ F1 <strong>${(rfF1*100).toFixed(1)}%</strong> — ใช้เป็น Production Model`;
+}
+
+/* ═══════════════════════════════════════════════
+   LAYER 3 — High-Risk List
+═══════════════════════════════════════════════ */
+function renderRisk(data){
+  if(!data||!data.length) return;
+  riskRows=data.sort((a,b)=>(b.Churn_Probability||0)-(a.Churn_Probability||0));
+
+  const high=data.filter(d=>d.Risk_Tier==='High').length;
+  const med=data.filter(d=>d.Risk_Tier==='Medium').length;
+  const low=data.filter(d=>d.Risk_Tier==='Low').length;
+  document.getElementById('rk1').textContent=high.toLocaleString();
+  document.getElementById('rk2').textContent=med.toLocaleString();
+  document.getElementById('rk3').textContent=low.toLocaleString();
+
+  filterRisk();
+}
+
+function filterRisk(){
+  const q=(document.getElementById('rkSearch').value||'').toLowerCase();
+  const tier=document.getElementById('rkTier').value;
+  const actual=document.getElementById('rkActual').value;
+
+  riskFiltered=riskRows.filter(r=>{
+    if(tier && r.Risk_Tier!==tier) return false;
+    if(actual!=='' && String(r.Exited)!==actual) return false;
+    if(q){
+      const hay=(String(r.CustomerId)+r.Surname+r.Geography+r.Gender).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('rkCount').textContent=riskFiltered.length.toLocaleString()+' customers';
+  const show=riskFiltered.slice(0,200);
+  const tbody=document.getElementById('rkBody');
+  tbody.innerHTML=show.map(r=>{
+    const p=+(r.Churn_Probability||0);
+    const pct=(p*100).toFixed(1);
+    const barColor=p>0.6?'#E53935':p>0.3?'#F59E0B':'#00A651';
+    const badge=r.Risk_Tier==='High'?`<span class="risk-h">High</span>`:r.Risk_Tier==='Medium'?`<span class="risk-m">Medium</span>`:`<span class="risk-l">Low</span>`;
+    const actualBadge=r.Exited===1?`<span style="color:var(--red);font-weight:600">Churned</span>`:`<span style="color:var(--g)">Retained</span>`;
+    return `<tr>
+      <td>${r.CustomerId||'—'}</td>
+      <td>${r.Surname||'—'}</td>
+      <td>${r.Geography||'—'}</td>
+      <td>${r.Gender||'—'}</td>
+      <td>${r.Age||'—'}</td>
+      <td>${r.Balance!=null?(+r.Balance).toLocaleString(undefined,{maximumFractionDigits:0}):'—'}</td>
+      <td>${r.NumOfProducts||'—'}</td>
+      <td>${r.IsActiveMember===1?'✓':'✗'}</td>
+      <td>${actualBadge}</td>
+      <td><div class="prob-bar-wrap"><div class="prob-bar" style="width:${pct}px;max-width:60px;background:${barColor}"></div><span>${pct}%</span></div></td>
+      <td>${badge}</td>
+      <td style="font-size:10px;color:var(--c3);max-width:280px">${r.Top_Reasons||'<span style="color:var(--c5)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+  if(riskFiltered.length>200){
+    tbody.innerHTML+=`<tr><td colspan="12" style="text-align:center;color:var(--c4);font-size:11px;padding:12px">แสดง 200 จาก ${riskFiltered.length.toLocaleString()} รายการ — ใช้ filter เพื่อค้นหา</td></tr>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>
