@@ -120,6 +120,10 @@
   .cbadge { padding:3px 8px; border-radius:14px; font-size:9px; font-family:'IBM Plex Mono',monospace; background:var(--gm); color:var(--gl); border:1px solid var(--br); white-space:nowrap; }
   .ins { margin-top:10px; padding:7px 11px; background:rgba(0,166,81,.06); border-left:3px solid var(--g); border-radius:0 6px 6px 0; font-size:11px; color:var(--c1); line-height:1.5; }
   .ins strong { color:var(--gd); }
+  .explain { margin-bottom:14px; padding:13px 16px; background:rgba(52,152,219,.06); border-left:3px solid #3498db; border-radius:0 8px 8px 0; font-size:12.5px; color:var(--c2); line-height:1.75; }
+  .explain .et { display:block; font-weight:700; color:var(--c1); margin-bottom:5px; font-size:13px; }
+  .explain strong { color:var(--c1); }
+  .explain .warn { display:block; margin-top:6px; color:#B45309; }
 
   /* Metric comparison cards */
   .mg { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:18px; }
@@ -275,6 +279,12 @@
   <!-- ═══ LAYER 2: Correlation ═══ -->
   <div class="page" id="page-correlation">
     <div class="sec-label">Point-Biserial Correlation with Churn</div>
+    <div class="explain">
+      <span class="et">หน้านี้ดูอะไร?</span>
+      ลูกค้าแต่ละลักษณะ เกี่ยวกับการเลิกใช้บริการ (churn) มากแค่ไหน<br>
+      🔴 <strong>แท่งแดง (ขวา)</strong> = ลักษณะนี้ยิ่งมาก ยิ่งเสี่ยงเลิกใช้ · 🟢 <strong>แท่งเขียว (ซ้าย)</strong> = ยิ่งมาก ยิ่งอยู่ต่อ · แท่งสั้น = แทบไม่เกี่ยว
+      <span class="warn">⚠️ "เกี่ยวกัน" ไม่ได้แปลว่า "เป็นสาเหตุ"</span>
+    </div>
     <div class="cr c2">
       <div class="cc" style="grid-column:1/-1">
         <div class="ch">
@@ -301,6 +311,12 @@
   <!-- ═══ LAYER 2: Feature Impact ═══ -->
   <div class="page" id="page-feature">
     <div class="sec-label">Random Forest Feature Importance</div>
+    <div class="explain">
+      <span class="et">หน้านี้ดูอะไร?</span>
+      โมเดล AI ใช้ข้อมูลตัวไหนมากที่สุด ในการเดาว่าใครจะเลิกใช้บริการ<br>
+      <strong>แท่งยิ่งยาว</strong> = โมเดลให้ความสำคัญมาก เป็น "สัญญาณเตือน" หลัก
+      <span class="warn">⚠️ บอกแค่ว่า <em>สำคัญ</em> แต่ไม่บอกว่าทำให้ churn เพิ่มหรือลด → ดูหน้า SHAP</span>
+    </div>
     <div class="cr c2">
       <div class="cc" style="grid-column:1/-1">
         <div class="ch">
@@ -318,6 +334,10 @@
   <!-- ═══ LAYER 2: SHAP ═══ -->
   <div class="page" id="page-shap">
     <div class="sec-label">SHAP — Global Explainability</div>
+    <div class="explain">
+      <span class="et">พูดง่ายๆ</span>
+      SHAP บอกว่าข้อมูลแต่ละตัว ดัน "โอกาสเลิกใช้" ของลูกค้า <strong>ขึ้นหรือลง</strong> เท่าไหร่ — อธิบายได้ทีละคน
+    </div>
     <div class="cr c2">
       <div class="cc" style="grid-column:1/-1">
         <div class="ch">
