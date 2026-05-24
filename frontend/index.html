@@ -205,15 +205,15 @@
   <div id="loadingState">
     <div class="spin"></div>
     <p>กำลังโหลดข้อมูล...</p>
-    <small>backend/data/Churn_Modelling.csv</small>
+    <small>data/Churn_Modelling.csv</small>
   </div>
 
   <div id="errorState">
     <div class="ei">⚠️</div>
     <h3>ไม่พบไฟล์ข้อมูล</h3>
-    <p>กรุณาตรวจสอบว่าไฟล์อยู่ในตำแหน่งที่ถูกต้อง และเปิดผ่าน Live Server</p>
-    <div class="epath">backend/data/Churn_Modelling.csv</div>
-    <p style="font-size:11px;color:var(--c5)">💡 ต้องรันผ่าน VSCode Live Server เท่านั้น</p>
+    <p>กรุณาตรวจสอบว่าไฟล์อยู่ในตำแหน่งที่ถูกต้อง และเปิดผ่าน web server</p>
+    <div class="epath">data/Churn_Modelling.csv</div>
+    <p style="font-size:11px;color:var(--c5)">💡 ต้องเปิดผ่าน web server (HTTP) ไม่ใช่เปิดไฟล์โดยตรง</p>
     <button class="rbtn" onclick="load()">🔄 ลองใหม่</button>
   </div>
 
@@ -419,12 +419,12 @@
 <script>
 let charts={}, sbCol=false;
 let riskRows=[], riskFiltered=[];
-const CSV='../backend/data/Churn_Modelling.csv';
-const RISK_CSV='../backend/data/high_risk_customers.csv';
-const FI_JSON='../backend/data/feature_importance.json';
-const CORR_JSON='../backend/data/correlation.json';
-const SCORES_JSON='../backend/data/model_scores.json';
-const SHAP_JSON='../backend/data/shap_global.json';
+const CSV='./data/Churn_Modelling.csv';
+const RISK_CSV='./data/high_risk_customers.csv';
+const FI_JSON='./data/feature_importance.json';
+const CORR_JSON='./data/correlation.json';
+const SCORES_JSON='./data/model_scores.json';
+const SHAP_JSON='./data/shap_global.json';
 const C={g:'rgba(0,166,81,.85)',gl:'rgba(0,199,97,.85)',gm:'rgba(0,166,81,.22)',r:'rgba(229,57,53,.85)',a:'rgba(245,158,11,.85)',b:'rgba(52,152,219,.85)',gr:'rgba(0,166,81,.07)',tx:'#5E8A72'};
 
 const pages={
