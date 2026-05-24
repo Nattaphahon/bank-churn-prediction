@@ -43,19 +43,19 @@ This project builds a full ML pipeline to **identify high-risk customers before 
 | Random Forest (Baseline) | 0.787 | 0.445 | 0.568 | 0.855 |
 | **Random Forest (Tuned)** | **0.576** | **0.693** | **0.629** | **0.864** |
 
-Threshold is calibrated to maximize **Recall** — catching churners before they leave (minimizing False Negatives) is the business priority. A missed churner costs ~฿20,000 in CLV + CAC; a false alarm costs ~฿500 in retention outreach.
+Threshold is calibrated to maximize **Recall** — catching churners before they leave (minimizing False Negatives) is the business priority. A missed churner costs ~20,000 in CLV + CAC; a false alarm costs ~500 in retention outreach.
 
 ---
 
 ## Retention ROI (Quick Estimate)
 
-Targeting the 1,822 high-risk customers with a ฿500/person campaign:
+Targeting the 1,822 high-risk customers with a 500/person campaign:
 
 | Scenario | Customers Retained | Value Preserved | Net ROI |
 |----------|--------------------|-----------------|---------|
-| Conservative (15% success) | ~269 | ฿5.4M | **5.9×** |
-| Base case (25% success) | ~449 | ฿9.0M | **9.9×** |
-| Optimistic (35% success) | ~628 | ฿12.6M | **13.8×** |
+| Conservative (15% success) | ~205 | 4.1M | **4.5×** |
+| Base case (25% success) | ~342 | 6.8M | **7.5×** |
+| Optimistic (35% success) | ~479 | 9.6M | **10.5×** |
 
 Full sensitivity analysis is in the notebook (Layer 5 → Retention ROI).
 
@@ -83,7 +83,8 @@ bank_cus_churn/
 │       ├── model_scores.json
 │       └── feature_importance.json
 ├── frontend/
-│   └── index.html                # Interactive dashboard
+│   ├── index.html                # Interactive dashboard
+│   └── data/                     # JSON/CSV copies served to the dashboard
 └── requirements.txt
 ```
 
@@ -104,4 +105,4 @@ python -m http.server 8000
 # then open http://localhost:8000/frontend/index.html
 ```
 
-> The dashboard loads data via `fetch()` from `backend/data/`, so it must be served over HTTP — opening `frontend/index.html` directly as a `file://` path is blocked by the browser's CORS policy.
+> The dashboard loads data via `fetch()` from `frontend/data/`, so it must be served over HTTP — opening `frontend/index.html` directly as a `file://` path is blocked by the browser's CORS policy.

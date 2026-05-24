@@ -148,8 +148,19 @@
   .finput:focus { border-color:var(--g); }
   .fsel { padding:8px 12px; border:1px solid var(--br); border-radius:8px; background:var(--cb); font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--c3); cursor:pointer; outline:none; }
   .tbl-count { font-size:10px; color:var(--c4); font-family:'IBM Plex Mono',monospace; margin-left:auto; }
-  .prob-bar-wrap { display:flex; align-items:center; gap:6px; }
+  .prob-bar-wrap { display:inline-flex; align-items:center; gap:6px; }
   .prob-bar { height:4px; border-radius:2px; min-width:2px; }
+  #page-risklist .tbl th:nth-child(5),#page-risklist .tbl td:nth-child(5),
+  #page-risklist .tbl th:nth-child(7),#page-risklist .tbl td:nth-child(7),
+  #page-risklist .tbl th:nth-child(8),#page-risklist .tbl td:nth-child(8),
+  #page-risklist .tbl th:nth-child(9),#page-risklist .tbl td:nth-child(9),
+  #page-risklist .tbl th:nth-child(10),#page-risklist .tbl td:nth-child(10){ text-align:center; }
+  #page-risklist .tbl th:nth-child(6),#page-risklist .tbl td:nth-child(6){ text-align:right; }
+  .reason-chip { display:inline-block; margin:2px 4px 2px 0; padding:2px 8px; border-radius:10px; background:rgba(229,57,53,.08); color:#B23; border:1px solid rgba(229,57,53,.22); font-size:10px; white-space:nowrap; font-family:'IBM Plex Sans','Noto Sans Thai',sans-serif; }
+  .pg-row { display:flex; align-items:center; gap:12px; margin-top:12px; font-size:11px; color:var(--c4); font-family:'IBM Plex Mono',monospace; flex-wrap:wrap; }
+  .pg-btn { padding:5px 12px; border:1px solid var(--br); border-radius:6px; background:var(--cb); color:var(--c2); cursor:pointer; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+  .pg-btn:hover { background:var(--gm); }
+  .pg-btn:disabled { opacity:.4; cursor:default; }
 
   @media(max-width:1200px){ .kg{grid-template-columns:repeat(3,1fr)} .cr.c3{grid-template-columns:repeat(2,1fr)} .mg{grid-template-columns:repeat(3,1fr)} }
   @media(max-width:700px){ .sidebar{width:var(--sc)} .main{margin-left:var(--sc)} .kg{grid-template-columns:repeat(2,1fr)} .mg{grid-template-columns:repeat(2,1fr)} .cr.c2,.cr.c3{grid-template-columns:1fr} .page{padding:18px 14px 40px} }
@@ -392,18 +403,12 @@
   <div class="page" id="page-risklist">
     <div class="kg" style="grid-template-columns:repeat(3,1fr)">
       <div class="kc dan"><div class="kl">High-Risk Customers</div><div class="kv" id="rk1">—</div><div class="ks">Churn Probability &gt; 60%</div></div>
-      <div class="kc war"><div class="kl">Medium-Risk</div><div class="kv" id="rk2">—</div><div class="ks">Churn Probability 30–60%</div></div>
-      <div class="kc"><div class="kl">Low-Risk</div><div class="kv" id="rk3">—</div><div class="ks">Churn Probability &lt; 30%</div></div>
+      <div class="kc war"><div class="kl">Actual Churn Rate</div><div class="kv" id="rk2">—</div><div class="ks">ในกลุ่มนี้ churn จริง</div></div>
+      <div class="kc"><div class="kl">Avg Churn Probability</div><div class="kv" id="rk3">—</div><div class="ks">ความน่าจะเป็นเฉลี่ยของกลุ่ม</div></div>
     </div>
     <div class="sec-label">Customer Risk List</div>
     <div class="filter-row">
       <input class="finput" id="rkSearch" placeholder="ค้นหาชื่อ, ID, ประเทศ..." oninput="filterRisk()">
-      <select class="fsel" id="rkTier" onchange="filterRisk()">
-        <option value="">All Tiers</option>
-        <option value="High">High Risk</option>
-        <option value="Medium">Medium Risk</option>
-        <option value="Low">Low Risk</option>
-      </select>
       <select class="fsel" id="rkActual" onchange="filterRisk()">
         <option value="">All Outcomes</option>
         <option value="1">Actually Churned</option>
@@ -425,12 +430,23 @@
             <th>Active</th>
             <th>Actual</th>
             <th>Churn Prob.</th>
-            <th>Risk Tier</th>
             <th>Top Reasons (SHAP)</th>
           </tr>
         </thead>
         <tbody id="rkBody"></tbody>
       </table>
+    </div>
+    <div class="pg-row">
+      <label>แถวต่อหน้า
+        <select class="fsel" id="rkPerPage" onchange="changeRkPerPage()">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </label>
+      <button class="pg-btn" id="rkPrev" onclick="rkGo(-1)">‹ ก่อนหน้า</button>
+      <span id="rkPageInfo">หน้า 1/1</span>
+      <button class="pg-btn" id="rkNext" onclick="rkGo(1)">ถัดไป ›</button>
     </div>
   </div>
 
@@ -453,9 +469,9 @@ const pages={
   balance:{t:'Balance Analysis',s:'Balance & Salary · Layer 1 Descriptive'},
   correlation:{t:'Correlation Analysis',s:'Point-Biserial Correlation · Layer 2 Diagnostic'},
   feature:{t:'Feature Impact',s:'Random Forest Feature Importance · Layer 2 Diagnostic'},
-  shap:{t:'SHAP Explainability',s:'Per-Feature & Per-Customer Explanations · Layer 2 Diagnostic'},
+  shap:{t:'SHAP Explainability',s:'Global Feature Explanations · Layer 2 Diagnostic'},
   model:{t:'Churn Prediction Model',s:'LR vs Random Forest · Layer 3 Predictive'},
-  risklist:{t:'High-Risk Customer List',s:'Model-Scored Risk Tiers · Layer 3 Predictive'},
+  risklist:{t:'High-Risk Customer List',s:'Model-Scored High-Risk Segment · Layer 3 Predictive'},
 };
 
 function nav(id,el){
@@ -625,7 +641,7 @@ function render(data){
   bar('cCrCard',cr.map(d=>d.label==='0'?'ไม่มีบัตร':'มีบัตร'),cr.map(d=>d.rate),[C.a,C.g]);
   document.getElementById('iCrCard').innerHTML=`การมีบัตรเครดิตไม่ส่งผลต่อ Churn อย่างมีนัยสำคัญ`;
 
-  const csBins=[{l:'Poor (<500)',mn:0,mx:500},{l:'Fair (500-600)',mn:500,mx:600},{l:'Good (600-700)',mn:600,mx:700},{l:'VGood (700-800)',mn:700,mx:800},{l:'Excellent (800+)',mn:800,mx:1000}];
+  const csBins=[{l:'Poor (<500)',mn:0,mx:500},{l:'Fair (500-600)',mn:500,mx:600},{l:'Good (600-700)',mn:600,mx:700},{l:'Very Good (700-800)',mn:700,mx:800},{l:'Excellent (800+)',mn:800,mx:1000}];
   const csData=csBins.map(b=>{
     const g2=data.filter(r=>r.CreditScore>=b.mn&&r.CreditScore<b.mx);
     const c2=g2.filter(r=>r.Exited===1).length;
@@ -640,7 +656,7 @@ function render(data){
   bar('cCScoreAvg',['Retained','Churned'],[avgCsR,avgCsC],[C.g,C.r],csAvgOpt);
   document.getElementById('iCScoreAvg').innerHTML=`Churned มี Credit Score เฉลี่ย <strong>${avgCsC.toFixed(0)}</strong> vs Retained <strong>${avgCsR.toFixed(0)}</strong> — ต่างกัน <strong>${Math.abs(avgCsC-avgCsR).toFixed(0)} คะแนน</strong>`;
 
-  const bOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toLocaleString()} THB`);
+  const bOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toLocaleString()}`);
   bOpt.scales.y.ticks.callback=v=>(v/1000).toFixed(0)+'K';
   bar('cBal',['Retained','Churned'],[avgBR,avgBC],[C.g,C.r],bOpt);
   document.getElementById('iBal').innerHTML=`Churned มี Balance เฉลี่ย <strong>${(avgBC/1000).toFixed(1)}K</strong> สูงกว่า Retained <strong>${(avgBR/1000).toFixed(1)}K</strong>`;
@@ -656,7 +672,7 @@ function render(data){
   bar('cProdAvg',['Retained','Churned'],[avgProdR,avgProdC],[C.g,C.r],prodAvgOpt);
   document.getElementById('iProdAvg').innerHTML=`Churned มี Products เฉลี่ย <strong>${avgProdC.toFixed(2)} ชิ้น</strong> vs Retained <strong>${avgProdR.toFixed(2)} ชิ้น</strong>`;
 
-  const sOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toLocaleString()} THB`);
+  const sOpt=mkOpts(false,ctx=>` ${ctx.parsed.y.toLocaleString()}`);
   sOpt.scales.y.ticks.callback=v=>(v/1000).toFixed(0)+'K';
   bar('cSal',['Retained','Churned'],[avgSR,avgSC],[C.g,C.a],sOpt);
   document.getElementById('iSal').innerHTML=`เงินเดือนเฉลี่ยไม่ต่างกันมาก — Salary ไม่ใช่ตัวแปรหลักของ Churn`;
@@ -675,7 +691,7 @@ function renderCorr(data){
   const sorted=[...data].sort((a,b)=>b.AbsCorr-a.AbsCorr);
   const labels=sorted.map(d=>d.Feature);
   const vals=sorted.map(d=>d.Correlation);
-  const colors=vals.map(v=>v>0?C.r:C.b);
+  const colors=vals.map(v=>v>0?C.r:C.g);
 
   if(charts['cCorr']) charts['cCorr'].destroy();
   charts['cCorr']=new Chart(document.getElementById('cCorr'),{
@@ -820,23 +836,37 @@ function renderRisk(data){
   if(!data||!data.length) return;
   riskRows=data.sort((a,b)=>(b.Churn_Probability||0)-(a.Churn_Probability||0));
 
-  const high=data.filter(d=>d.Risk_Tier==='High').length;
-  const med=data.filter(d=>d.Risk_Tier==='Medium').length;
-  const low=data.filter(d=>d.Risk_Tier==='Low').length;
-  document.getElementById('rk1').textContent=high.toLocaleString();
-  document.getElementById('rk2').textContent=med.toLocaleString();
-  document.getElementById('rk3').textContent=low.toLocaleString();
+  const n=data.length;
+  const churned=data.filter(d=>d.Exited===1).length;
+  const avgProb=data.reduce((s,d)=>s+(d.Churn_Probability||0),0)/n;
+  document.getElementById('rk1').textContent=n.toLocaleString();
+  document.getElementById('rk2').textContent=(churned/n*100).toFixed(1)+'%';
+  document.getElementById('rk3').textContent=(avgProb*100).toFixed(1)+'%';
 
   filterRisk();
 }
 
+const REASON_LABELS={
+  'Age':'อายุมาก','Geography_Germany':'อยู่เยอรมนี','Geography_France':'อยู่ฝรั่งเศส','Geography_Spain':'อยู่สเปน',
+  'IsActiveMember':'ไม่ active','NumOfProducts':'ผลิตภัณฑ์เยอะ','Gender_Male':'เพศชาย','Gender_Female':'เพศหญิง',
+  'Balance':'ยอดเงินสูง','CreditScore':'เครดิตต่ำ','EstimatedSalary':'เงินเดือนสูง','HasCrCard':'มีบัตรเครดิต','Tenure':'อายุสมาชิก'
+};
+function reasonsToChips(s){
+  if(!s) return '<span style="color:var(--c5)">—</span>';
+  return s.split(';').map(part=>{
+    const name=part.trim().split(' (')[0];
+    if(!name) return '';
+    return `<span class="reason-chip">${REASON_LABELS[name]||name}</span>`;
+  }).join('');
+}
+
+let rkPage=1, rkPerPage=50;
+
 function filterRisk(){
   const q=(document.getElementById('rkSearch').value||'').toLowerCase();
-  const tier=document.getElementById('rkTier').value;
   const actual=document.getElementById('rkActual').value;
 
   riskFiltered=riskRows.filter(r=>{
-    if(tier && r.Risk_Tier!==tier) return false;
     if(actual!=='' && String(r.Exited)!==actual) return false;
     if(q){
       const hay=(String(r.CustomerId)+r.Surname+r.Geography+r.Gender).toLowerCase();
@@ -846,13 +876,27 @@ function filterRisk(){
   });
 
   document.getElementById('rkCount').textContent=riskFiltered.length.toLocaleString()+' customers';
-  const show=riskFiltered.slice(0,200);
+  rkPage=1;
+  renderRkPage();
+}
+
+function changeRkPerPage(){ rkPerPage=+document.getElementById('rkPerPage').value; rkPage=1; renderRkPage(); }
+function rkGo(d){
+  const tp=Math.max(1,Math.ceil(riskFiltered.length/rkPerPage));
+  rkPage=Math.min(tp,Math.max(1,rkPage+d));
+  renderRkPage();
+}
+
+function renderRkPage(){
+  const tp=Math.max(1,Math.ceil(riskFiltered.length/rkPerPage));
+  if(rkPage>tp) rkPage=tp;
+  const start=(rkPage-1)*rkPerPage;
+  const show=riskFiltered.slice(start,start+rkPerPage);
   const tbody=document.getElementById('rkBody');
   tbody.innerHTML=show.map(r=>{
     const p=+(r.Churn_Probability||0);
     const pct=(p*100).toFixed(1);
     const barColor=p>0.6?'#E53935':p>0.3?'#F59E0B':'#00A651';
-    const badge=r.Risk_Tier==='High'?`<span class="risk-h">High</span>`:r.Risk_Tier==='Medium'?`<span class="risk-m">Medium</span>`:`<span class="risk-l">Low</span>`;
     const actualBadge=r.Exited===1?`<span style="color:var(--red);font-weight:600">Churned</span>`:`<span style="color:var(--g)">Retained</span>`;
     return `<tr>
       <td>${r.CustomerId||'—'}</td>
@@ -865,13 +909,12 @@ function filterRisk(){
       <td>${r.IsActiveMember===1?'✓':'✗'}</td>
       <td>${actualBadge}</td>
       <td><div class="prob-bar-wrap"><div class="prob-bar" style="width:${pct}px;max-width:60px;background:${barColor}"></div><span>${pct}%</span></div></td>
-      <td>${badge}</td>
-      <td style="font-size:10px;color:var(--c3);max-width:280px">${r.Top_Reasons||'<span style="color:var(--c5)">—</span>'}</td>
+      <td style="max-width:280px">${reasonsToChips(r.Top_Reasons)}</td>
     </tr>`;
-  }).join('');
-  if(riskFiltered.length>200){
-    tbody.innerHTML+=`<tr><td colspan="12" style="text-align:center;color:var(--c4);font-size:11px;padding:12px">แสดง 200 จาก ${riskFiltered.length.toLocaleString()} รายการ — ใช้ filter เพื่อค้นหา</td></tr>`;
-  }
+  }).join('') || `<tr><td colspan="11" style="text-align:center;color:var(--c4);padding:16px">ไม่พบข้อมูล</td></tr>`;
+  document.getElementById('rkPageInfo').textContent=`หน้า ${rkPage}/${tp}`;
+  document.getElementById('rkPrev').disabled=rkPage<=1;
+  document.getElementById('rkNext').disabled=rkPage>=tp;
 }
 
 load();
