@@ -162,11 +162,111 @@
   .pg-btn:hover { background:var(--gm); }
   .pg-btn:disabled { opacity:.4; cursor:default; }
 
-  @media(max-width:1200px){ .kg{grid-template-columns:repeat(3,1fr)} .cr.c3{grid-template-columns:repeat(2,1fr)} .mg{grid-template-columns:repeat(3,1fr)} }
-  @media(max-width:700px){ .sidebar{width:var(--sc)} .main{margin-left:var(--sc)} .kg{grid-template-columns:repeat(2,1fr)} .mg{grid-template-columns:repeat(2,1fr)} .cr.c2,.cr.c3{grid-template-columns:1fr} .page{padding:18px 14px 40px} }
+  /* ═══ MOBILE HAMBURGER ═══ */
+  .mobile-menu-btn { display:none; position:fixed; top:14px; left:14px; z-index:310; width:40px; height:40px; border-radius:10px; background:var(--cb); border:1px solid var(--br); cursor:pointer; align-items:center; justify-content:center; font-size:18px; color:var(--c3); box-shadow:0 2px 12px rgba(0,0,0,.08); transition:all .2s; }
+  .mobile-menu-btn:hover { background:var(--gm); color:var(--g); }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:190; backdrop-filter:blur(2px); }
+  .sidebar-overlay.show { display:block; }
+
+  /* ═══ RESPONSIVE BREAKPOINTS ═══ */
+
+  /* TABLET — 1200px */
+  @media(max-width:1200px){
+    .kg { grid-template-columns:repeat(3,1fr); }
+    .cr.c3 { grid-template-columns:repeat(2,1fr); }
+    .mg { grid-template-columns:repeat(3,1fr); }
+  }
+
+  /* SMALL TABLET — 900px */
+  @media(max-width:900px){
+    .kg { grid-template-columns:repeat(3,1fr); }
+    .cr.c3 { grid-template-columns:1fr; }
+    .mg { grid-template-columns:repeat(3,1fr); }
+    .kv { font-size:26px; }
+    header { padding:14px 20px; }
+    .hl h2 { font-size:15px; }
+  }
+
+  /* MOBILE — 700px: sidebar becomes overlay */
+  @media(max-width:700px){
+    .mobile-menu-btn { display:flex; }
+    .sidebar { transform:translateX(-100%); width:var(--sw); box-shadow:4px 0 24px rgba(0,0,0,.15); transition:transform .3s ease; }
+    .sidebar.col { width:var(--sw); transform:translateX(-100%); }
+    .sidebar.mobile-open { transform:translateX(0); }
+    .sidebar.mobile-open .lt { opacity:1; pointer-events:auto; }
+    .sidebar.mobile-open .nlb { opacity:1; }
+    .sidebar.mobile-open .nbadge { opacity:1; }
+    .sidebar.mobile-open .nl { opacity:1; }
+    .sidebar.mobile-open .sc-card { opacity:1; pointer-events:auto; }
+    .sidebar.mobile-open .tlab { opacity:1; }
+    .sb-toggle { display:none; }
+    .main { margin-left:0 !important; }
+    header { padding:14px 16px 14px 62px; }
+    .kg { grid-template-columns:repeat(2,1fr); }
+    .mg { grid-template-columns:repeat(2,1fr); }
+    .cr.c2, .cr.c3 { grid-template-columns:1fr; }
+    .page { padding:18px 14px 40px; }
+    .kv { font-size:24px; }
+    .kc { padding:14px; }
+    .cc { padding:14px; }
+    .explain { padding:10px 13px; font-size:12px; }
+    .tbl-wrap { border-radius:8px; }
+    .tbl td, .tbl th { padding:7px 8px; }
+    .filter-row { gap:8px; }
+    .finput { min-width:140px; font-size:12px; }
+    .pg-row { font-size:10px; gap:8px; }
+    #page-risklist .kg { grid-template-columns:repeat(2,1fr) !important; }
+  }
+
+  /* SMALL MOBILE — 480px */
+  @media(max-width:480px){
+    .kg { grid-template-columns:1fr; }
+    .mg { grid-template-columns:1fr; }
+    .kv { font-size:22px; }
+    .kl { font-size:8px; }
+    .ks { font-size:9px; }
+    header { padding:10px 12px 10px 58px; }
+    .hl h2 { font-size:14px; }
+    .hl p { font-size:9px; }
+    .dbadge { padding:4px 8px; font-size:9px; }
+    .page { padding:14px 10px 36px; }
+    .sec-label { font-size:8px; margin-bottom:10px; }
+    .ct { font-size:11px; }
+    .cs2 { font-size:8px; }
+    .cbadge { font-size:8px; padding:2px 6px; }
+    .ins { font-size:10px; padding:6px 9px; }
+    .explain { font-size:11px; padding:9px 11px; }
+    .explain .et { font-size:12px; }
+    .cc { padding:12px; }
+    .mc-rf { font-size:18px; }
+    .mc-lbl { font-size:8px; }
+    .mc-lr { font-size:10px; }
+    .tbl td { font-size:10px; }
+    .tbl th { font-size:8px; padding:8px 6px; }
+    .reason-chip { font-size:9px; padding:1px 6px; }
+    .filter-row { flex-direction:column; }
+    .finput { min-width:100%; }
+    .fsel { width:100%; }
+    .pg-row { justify-content:center; }
+    #page-risklist .kg { grid-template-columns:1fr !important; }
+    .mobile-menu-btn { top:10px; left:10px; width:36px; height:36px; font-size:16px; }
+  }
+
+  /* VERY SMALL — 360px */
+  @media(max-width:360px){
+    .kv { font-size:20px; }
+    .page { padding:12px 8px 30px; }
+    header { padding:8px 8px 8px 52px; }
+    .hl h2 { font-size:13px; }
+    .sidebar { width:220px; }
+  }
 </style>
 </head>
 <body>
+
+<!-- MOBILE MENU -->
+<button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()" aria-label="Toggle menu">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
@@ -401,7 +501,7 @@
 
   <!-- ═══ LAYER 3: High-Risk List ═══ -->
   <div class="page" id="page-risklist">
-    <div class="kg" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kg" id="riskKpiGrid" style="grid-template-columns:repeat(3,1fr)">
       <div class="kc dan"><div class="kl">High-Risk Customers</div><div class="kv" id="rk1">—</div><div class="ks">Churn Probability &gt; 60%</div></div>
       <div class="kc war"><div class="kl">Actual Churn Rate</div><div class="kv" id="rk2">—</div><div class="ks">ในกลุ่มนี้ churn จริง</div></div>
       <div class="kc"><div class="kl">Avg Churn Probability</div><div class="kv" id="rk3">—</div><div class="ks">ความน่าจะเป็นเฉลี่ยของกลุ่ม</div></div>
@@ -483,12 +583,30 @@ function nav(id,el){
   const info=pages[id]||{};
   document.getElementById('ptitle').textContent=info.t||id;
   document.getElementById('psub').textContent=info.s||'';
+  // Auto-close sidebar on mobile
+  if(window.innerWidth<=700){
+    const sb=document.getElementById('sidebar');
+    const ov=document.getElementById('sidebarOverlay');
+    const btn=document.getElementById('mobileMenuBtn');
+    sb.classList.remove('mobile-open');
+    ov.classList.remove('show');
+    btn.textContent='☰';
+  }
 }
 
 function toggleSB(){
   sbCol=!sbCol;
   document.getElementById('sidebar').classList.toggle('col',sbCol);
   document.getElementById('main').classList.toggle('col',sbCol);
+}
+
+function toggleMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  const btn=document.getElementById('mobileMenuBtn');
+  const isOpen=sb.classList.toggle('mobile-open');
+  ov.classList.toggle('show',isOpen);
+  btn.textContent=isOpen?'✕':'☰';
 }
 
 function mkOpts(pct=true,cb=null){
